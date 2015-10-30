@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Lollipop Masters</title>
+		<script src="https://cdn.firebase.com/js/client/2.3.1/firebase.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" integrity="sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
+		<link rel="stylesheet" href="bootstrap.min.css">
+		<script type="text/javascript">
+
+			var db = new Firebase("https://popping-torch-5004.firebaseio.com/");
+
+			function add(){
+				console.log('hi');
+				var score = $('#score');
+				var name = $('#name');
+				var checked = $('input[type=\'radio\']:checked');
+
+				var entry = {
+					score: parseInt(score.val()),
+					name: name.val(),
+					course: checked.val()
+				}
+
+				userRef = db.child(entry.name);
+				
+				userRef.once("value", function(data){
+					console.log(data.val().score);	
+					if(data.val().score < entry.score){
+						console.log("started the thing")
+						userRef.setPriority(-1 * entry.score);
+						console.log("setPriority");
+						userRef.update({
+							"score":entry.score,
+							"course":entry.course
+						}, function(error){
+							if(error){
+								console.log("bad");
+								message("bad", "Score Upload Failed", "Darn... something went wrong...");
+							}
+							else {
+								console.log("good");
+								message("good", "Nice!", "The thing worked");
+							}
+						});
+					}
+				})
+				score.prop("value", "");
+				name.prop("value", "");
+				checked.prop("checked", false);
+
+				console.log(entry);
+			}
+
+			function message(type, title, message){
+				switch(type){
+					case "good": 
+						$("#message").prop("class", "alert alert-dismissible alert-success");
+						break;
+					case "bad": 
+						$("#message").prop("class", "alert alert-dismissible alert-danger");
+						break;
+					default: 
+						$("#message").prop("class", "alert alert-dismissible alert-info");
+						break;
+				}
+
+				$("#strong").text(title);
+				$("#body-text").text(message);
+				$("#message").prop("title", title + ": " + message);
+
+				$("#message").show();
+
+			}
+
+			function display(snapshot){
+				var i = 1;
+				$("#tbody").empty();
+				$("#class-compare").empty();
+				var scoreArray = [0, 0, 0];
+				var classArray = ["APCS", "Mobile", "Teacher"];
+				snapshot.forEach(function(childSnapshot){
+					$('#tbody').append("<tr><td>" + i + "</td><td>" + childSnapshot.val().score + "</td><td>" + childSnapshot.key() + "</td><td>" + childSnapshot.val().course + "</td></tr>");
+					i++;
+					switch(childSnapshot.val().course){
+						case "APCS":
+							scoreArray[0] += childSnapshot.val().score;
+							break;
+						case "Mobile":
+							scoreArray[1] += childSnapshot.val().score;
+							break;
+						case "Teacher":
+							scoreArray[2] += childSnapshot.val().score;
+							break;
+					}
+				})
+
+				console.log(scoreArray);
+
+				var i = scoreArray.indexOf(Math.max.apply(Math, scoreArray));
+				var sortedNames = [];
+				var sortedScores = [];
+				sortedNames[0] = classArray[i];
+				sortedScores[0] = scoreArray[i];
+				scoreArray[i] = -1;
+				i = scoreArray.indexOf(Math.max.apply(Math, scoreArray));
+				sortedNames[1] = classArray[i];
+				sortedScores[1] = scoreArray[i];
+				scoreArray[i] = -1;
+				i = scoreArray.indexOf(Math.max.apply(Math, scoreArray));
+				sortedNames[2] = classArray[i];
+				sortedScores[2] = scoreArray[i];
+
+				console.log(sortedNames);
+				console.log(sortedScores);
+
+				for(var i = 1; i <= 3; i++){
+					$("#class-compare").append("<tr><td>" + i + "</td><td>" + sortedScores[i - 1] + "</td><td>" + sortedNames[i-1] + "</td></tr>");
+				}
+
+			}
+
+			db.orderByChild("score").on("value", function(snapshot){
+				display(snapshot);
+			}, function(error){
+				if(error)
+					console.log("well crap" + error.code);
+
+			})
+		</script>
+	</head>
+	<body onload="$('#message').hide()">
+		<h2 style="text-align:center">Lollipop <strike>Masters</strike> Lollapalooza</h2>
+		<div id="container">
+
+			<table class="table table-striped table-hover">
+				<thead>
+					<tr>
+						<th>#</th>
+						<th>Score</th>
+						<th>Name</th>
+						<th>Class</th>
+					</tr>
+				</thead>
+				<tbody id="tbody">
+					
+				</tbody>
+			</table>
+			<div id="form">
+				<h5>Submit your score:</h5>
+				<input id="score" type="number" min="0" placeholder="Score" class="top form-control" required> 
+				<input id="name" type="text" placeholder="Name" class="top form-control" required><br />
+
+				<div id="radii">
+					<div class="radio">
+						<label>
+							<input id="apcs" type="radio" name="c" value="APCS" required>
+							APCS
+						</label>
+					</div>
+					<div class="radio">
+						<label>
+							<input id="mob" type="radio" name="c" value="Mobile" required>
+							Mobile App
+						</label>
+					</div>
+					<div class="radio">
+						<label>
+							<input id="teach" type="radio" name="c" value="Teacher" required>
+							Teacher
+						</label>
+					</div>
+				</div>
+				<a onclick="add()" class="btn btn-primary" id="side">Submit</a>
+			</div>
+			<div id="compete">
+				<h5>Class Comparison</h5>
+				<table id="compete-table" class="table table-striped table-hover">	
+					<thead>
+						<tr>
+							<th>#</th>
+							<th>Score</th>
+							<th>Class</th>
+						</tr>
+					</thead>
+					<tbody id="class-compare">
+						
+					</tbody>
+				</table>
+			</div>
+			
+		</div>
+		
+		<div id="message" class="alert alert-dismissible alert-success" title="">
+		  	<button type="button" class="close" data-dismiss="alert" onclick="$('#message').hide()">x</button>
+		  	<strong id="strong"></strong><div id="body-text"></div>
+		</div>
+	</body>
+	
+	<style>
+		#compete-table {
+			width: 100%;
+		}
+		#message {
+			position: fixed;
+			bottom: 10px;
+			right: 10px;
+			overflow: hidden;
+			width: 30%;
+			text-overflow: ellipsis;
+		}
+		#container {
+			padding-top: 50px;
+			width: 50%;
+			margin: 0 auto;
+		}
+		#form {
+			width:  45%;
+			float: left;
+		}
+		#compete {
+			width: 45%;
+			float: right;
+		}
+		.top {
+			width: 100%;
+			margin: auto;
+			display: inline-block;
+		}
+		.radio {
+			width: 30%;
+			display: inline-block;
+			text-align: center;
+		}
+		#side {
+			width: 100%;
+			display: inline-block;
+		}
+		#radii {
+			margin: 0 auto;
+			display: block;
+			vertical-align: center;
+		}
+
+	</style>
+
+</html>
