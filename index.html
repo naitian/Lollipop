@@ -2,13 +2,14 @@
 <html>
 	<head>
 		<title>Lollipop Lollapalooza</title>
+		<script type="text/javascript" src="db.js"></script>
 		<script src="https://cdn.firebase.com/js/client/2.3.1/firebase.js"></script>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" integrity="sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
 		<link rel="stylesheet" href="bootstrap.min.css">
 		<script type="text/javascript">
 
-			var db = new Firebase("https://popping-torch-5004.firebaseio.com/");
+			var db = new Firebase(db_url);
 
 			function add(){
 				var name = $('#name');
@@ -22,10 +23,13 @@
 				    			alert("Error: No user found.")
 				    		}
 				    		else{
+
+				    			var user = response.results[0];
+
 				    			var score = $('#score');
-								
-								var	full_name = response.results[0].full_name;
-								var id = response.results[0].id;
+
+								var	full_name = user.full_name;
+								var id = user.id;
 				    			var checked = $('input[type=\'radio\']:checked');
 
 								var entry = {
@@ -34,27 +38,20 @@
 									course: checked.val()
 								}
 
-								console.log(entry.name);
 								userRef = db.child(id);
 								
 								userRef.once("value", function(data){
-									if(data.exists()){
-										console.log(data.val());
-										console.log(data.val().score);	
+									if(data.exists()){	
 										if(data.val().score < entry.score){
-											console.log("started the thing")
 											userRef.setPriority(-1 * entry.score);
-											console.log("setPriority");
 											userRef.update({
 												"score":entry.score,
 												"course":entry.course
 											}, function(error){
 												if(error){
-													console.log("bad");
 													message("bad", "Score Upload Failed", "Darn... something went wrong...");
 												}
 												else {
-													console.log("good");
 													message("good", "Nice!", "The thing worked");
 												}
 											});
@@ -146,8 +143,8 @@
 			db.orderByPriority().on("value", function(snapshot){
 				display(snapshot);
 			}, function(error){
-				if(error)
-					console.log("well crap" + error.code);
+				if(error){
+				}
 
 			})
 		</script>
