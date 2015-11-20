@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Lollipop Masters</title>
+		<title>Lollipop Lollapalooza</title>
 		<script src="https://cdn.firebase.com/js/client/2.3.1/firebase.js"></script>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" integrity="sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
@@ -11,45 +11,72 @@
 			var db = new Firebase("https://popping-torch-5004.firebaseio.com/");
 
 			function add(){
-				console.log('hi');
-				var score = $('#score');
 				var name = $('#name');
-				var checked = $('input[type=\'radio\']:checked');
+				xmlhttp = new XMLHttpRequest();
+				xmlhttp.open('GET', 'https://crossorigin.me/http://naitian.mooo.com:8080?uname=' + name.val());
+				xmlhttp.onload = function (e) {
+				  	if (xmlhttp.readyState === 4) {
+				    	if (xmlhttp.status === 200) {
+				    		var response = JSON.parse(xmlhttp.responseText);
+				    		if(response.count < 1){
+				    			alert("Error: No user found.")
+				    		}
+				    		else{
+				    			var score = $('#score');
+								
+								var	full_name = response.results[0].full_name;
+								var id = response.results[0].id;
+				    			var checked = $('input[type=\'radio\']:checked');
 
-				var entry = {
-					score: parseInt(score.val()),
-					name: name.val(),
-					course: checked.val()
+								var entry = {
+									score: parseInt(score.val()),
+									name: full_name,
+									course: checked.val()
+								}
+
+								console.log(entry.name);
+								userRef = db.child(id);
+								
+								userRef.once("value", function(data){
+									if(data.exists()){
+										console.log(data.val());
+										console.log(data.val().score);	
+										if(data.val().score < entry.score){
+											console.log("started the thing")
+											userRef.setPriority(-1 * entry.score);
+											console.log("setPriority");
+											userRef.update({
+												"score":entry.score,
+												"course":entry.course
+											}, function(error){
+												if(error){
+													console.log("bad");
+													message("bad", "Score Upload Failed", "Darn... something went wrong...");
+												}
+												else {
+													console.log("good");
+													message("good", "Nice!", "The thing worked");
+												}
+											});
+										}
+									}
+									else{
+										userRef.setWithPriority({course: entry.course, name: entry.name, score: entry.score}, -1 * entry.score);
+										//alert("does not exist");
+									}
+								}, function(error){
+									alert("error");
+								})
+								score.prop("value", "");
+								name.prop("value", "");
+								checked.prop("checked", false);
+
+				    		}
+				    	}
+				  	}
 				}
-
-				userRef = db.child(entry.name);
+				xmlhttp.send(null);
 				
-				userRef.once("value", function(data){
-					console.log(data.val().score);	
-					if(data.val().score < entry.score){
-						console.log("started the thing")
-						userRef.setPriority(-1 * entry.score);
-						console.log("setPriority");
-						userRef.update({
-							"score":entry.score,
-							"course":entry.course
-						}, function(error){
-							if(error){
-								console.log("bad");
-								message("bad", "Score Upload Failed", "Darn... something went wrong...");
-							}
-							else {
-								console.log("good");
-								message("good", "Nice!", "The thing worked");
-							}
-						});
-					}
-				})
-				score.prop("value", "");
-				name.prop("value", "");
-				checked.prop("checked", false);
-
-				console.log(entry);
 			}
 
 			function message(type, title, message){
@@ -80,7 +107,7 @@
 				var scoreArray = [0, 0, 0];
 				var classArray = ["APCS", "Mobile", "Teacher"];
 				snapshot.forEach(function(childSnapshot){
-					$('#tbody').append("<tr><td>" + i + "</td><td>" + childSnapshot.val().score + "</td><td>" + childSnapshot.key() + "</td><td>" + childSnapshot.val().course + "</td></tr>");
+					$('#tbody').append("<tr><td>" + i + "</td><td>" + childSnapshot.val().score + "</td><td>" + childSnapshot.val().name + "</td><td>" + childSnapshot.val().course + "</td></tr>");
 					i++;
 					switch(childSnapshot.val().course){
 						case "APCS":
@@ -94,8 +121,6 @@
 							break;
 					}
 				})
-
-				console.log(scoreArray);
 
 				var i = scoreArray.indexOf(Math.max.apply(Math, scoreArray));
 				var sortedNames = [];
@@ -111,8 +136,6 @@
 				sortedNames[2] = classArray[i];
 				sortedScores[2] = scoreArray[i];
 
-				console.log(sortedNames);
-				console.log(sortedScores);
 
 				for(var i = 1; i <= 3; i++){
 					$("#class-compare").append("<tr><td>" + i + "</td><td>" + sortedScores[i - 1] + "</td><td>" + sortedNames[i-1] + "</td></tr>");
@@ -120,7 +143,7 @@
 
 			}
 
-			db.orderByChild("score").on("value", function(snapshot){
+			db.orderByPriority().on("value", function(snapshot){
 				display(snapshot);
 			}, function(error){
 				if(error)
@@ -151,7 +174,7 @@
 				<div id="form" class="col-md-6">
 					<h5>Submit your score:</h5>
 					<input id="score" type="number" min="0" placeholder="Score" class="top form-control" required> 
-					<input id="name" type="text" placeholder="Name" class="top form-control" required><br />
+					<input id="name" type="text" placeholder="Ion Username" class="top form-control" required><br />
 
 					<div id="radii" class="row">
 						<div class="radio col-md-4" style="margin-top: 0px">
@@ -193,6 +216,8 @@
 				
 			</div>
 		</div>
+		<br />
+		<a href="faq.html" id="faq">faq</a>
 		<div id="message" class="alert alert-dismissible alert-success" title="">
 		  	<button type="button" class="close" data-dismiss="alert" onclick="$('#message').hide()">x</button>
 		  	<strong id="strong"></strong><div id="body-text"></div>
@@ -200,6 +225,13 @@
 	</body>
 	
 	<style>
+		#faq{
+			text-align: center;
+		    margin: 0 auto;
+		    width: 100%;
+		    display: inline-block;
+		}
+
 		#message {
 			position: fixed;
 			bottom: 10px;
