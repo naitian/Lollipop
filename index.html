@@ -5,7 +5,7 @@
 		<script type="text/javascript" src="db.js"></script>
 		<script src="https://cdn.firebase.com/js/client/2.3.1/firebase.js"></script>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" integrity="sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js" integrity="sha512-K1qjQ+NcF2TYO/eI3M6v8EiNYZfA95pQumfvcVrTHtwQVDG+aHRqLi/ETn2uB+1JqwYqVG3LIvdm9lj6imS/pQ==" crossorigin="anonymous"></script>
 		<link rel="stylesheet" href="bootstrap.min.css">
 		<script type="text/javascript">
 
@@ -20,7 +20,7 @@
 				    	if (xmlhttp.status === 200) {
 				    		var response = JSON.parse(xmlhttp.responseText);
 				    		if(response.count < 1){
-				    			alert("Error: No user found.")
+				    			showalert("User \"" + name.val() + "\" was not found!", "alert-danger", "Uh-oh!");
 				    		}
 				    		else{
 
@@ -49,20 +49,25 @@
 												"course":entry.course
 											}, function(error){
 												if(error){
-													message("bad", "Score Upload Failed", "Darn... something went wrong...");
+													showalert("Your score couldn't be added to the database.", "alert-danger", "Uh-oh!");
 												}
 												else {
-													message("good", "Nice!", "The thing worked");
+													showalert("Your score was added!", "alert-success", "Success!");
 												}
 											});
 										}
 									}
 									else{
-										userRef.setWithPriority({course: entry.course, name: entry.name, score: entry.score}, -1 * entry.score);
+										userRef.setWithPriority({course: entry.course, name: entry.name, score: entry.score}, -1 * entry.score, function(error){
+											if(error)
+												showalert("Your score couldn't be added to the database.", "alert-danger", "Uh-oh!");
+											else
+												showalert("Your score was added!", "alert-success", "Success!");
+										});
 										//alert("does not exist");
 									}
 								}, function(error){
-									alert("error");
+									showalert("Something went wrong!", "alert-danger", "Uh-oh!");
 								})
 								score.prop("value", "");
 								name.prop("value", "");
@@ -76,28 +81,11 @@
 				
 			}
 
-			function message(type, title, message){
-				switch(type){
-					case "good": 
-						$("#message").prop("class", "alert alert-dismissible alert-success");
-						break;
-					case "bad": 
-						$("#message").prop("class", "alert alert-dismissible alert-danger");
-						break;
-					default: 
-						$("#message").prop("class", "alert alert-dismissible alert-info");
-						break;
-				}
-
-				$("#strong").text(title);
-				$("#body-text").text(message);
-				$("#message").prop("title", title + ": " + message);
-
-				$("#message").show();
-
-			}
+			
 
 			function display(snapshot){
+
+				
 				var i = 1;
 				$("#tbody").empty();
 				$("#class-compare").empty();
@@ -147,6 +135,27 @@
 				}
 
 			})
+
+			function showalert(message, alerttype, title) {
+
+				var titleText = (typeof title === 'undefined') ? "" : title;
+
+			    $('#alert-placeholder').append('<div id="alertdiv" class="alert ' +  alerttype + '" title="' + titleText + '" style="width: 25em"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>' + titleText + '</strong> '+message+'</div>')
+
+			    setTimeout(function() { 
+
+			      $("#alertdiv").remove();
+
+			    }, 5000);
+			}
+
+			var connectedRef = new Firebase(db_url + ".info/connected");
+			connectedRef.on("value", function(snap) {
+				if (!(snap.val() === true)) {
+			    	showalert("You're offline. Check your internet connection.", "alert-danger", "Uh-oh!");
+				}
+			});
+
 		</script>
 	</head>
 	<body onload="$('#message').hide()">
@@ -170,7 +179,7 @@
 			<div class="row">
 				<div id="form" class="col-md-6">
 					<h5>Submit your score:</h5>
-					<input id="score" type="number" min="0" placeholder="Score" class="top form-control" required> 
+					<input id="score" type="number" min="0" max="150" placeholder="Score" class="top form-control" required> 
 					<input id="name" type="text" placeholder="Ion Username" class="top form-control" required><br />
 
 					<div id="radii" class="row">
@@ -215,10 +224,7 @@
 		</div>
 		<br />
 		<a href="faq.html" id="faq">faq</a>
-		<div id="message" class="alert alert-dismissible alert-success" title="">
-		  	<button type="button" class="close" data-dismiss="alert" onclick="$('#message').hide()">x</button>
-		  	<strong id="strong"></strong><div id="body-text"></div>
-		</div>
+		<div id="alert-placeholder"></div>
 	</body>
 	
 	<style>
@@ -229,14 +235,6 @@
 		    display: inline-block;
 		}
 
-		#message {
-			position: fixed;
-			bottom: 10px;
-			right: 10px;
-			overflow: hidden;
-			width: 30%;
-			text-overflow: ellipsis;
-		}
 		#container {
 			padding-top: 50px;
 			width: 50%;
@@ -256,7 +254,11 @@
 			display: block;
 			vertical-align: center;
 		}
-
+		#alert-placeholder{
+			position: fixed;
+			bottom: 10px;
+			right: 10px;
+		}
 	</style>
 
 </html>
